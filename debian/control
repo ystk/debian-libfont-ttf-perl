@@ -1,0 +1,23 @@
+Source: libfont-ttf-perl
+Section: perl
+Priority: optional
+Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
+Uploaders: Gunnar Wolf <gwolf@debian.org>, Russ Allbery <rra@debian.org>,
+ Krzysztof Krzyzaniak (eloy) <eloy@debian.org>,
+ Damyan Ivanov <dmn@debian.org>,
+ gregor herrmann <gregoa@debian.org>
+Build-Depends: debhelper (>= 5.0.0), quilt (>= 0.40)
+Build-Depends-Indep: perl (>= 5.8.0-19)
+Standards-Version: 3.8.0
+Homepage: http://search.cpan.org/dist/Font-TTF/
+Vcs-Svn: svn://svn.debian.org/pkg-perl/trunk/libfont-ttf-perl/
+Vcs-Browser: http://svn.debian.org/wsvn/pkg-perl/trunk/libfont-ttf-perl/
+
+Package: libfont-ttf-perl
+Architecture: all
+Depends: ${perl:Depends}
+Suggests: libxml-parser-perl
+Description: Perl module for TrueType font hacking
+ Font::TTF module supports reading, processing and writing many different
+ table formats for TrueType fonts. You can do almost anything with a
+ TrueType font with this module.
