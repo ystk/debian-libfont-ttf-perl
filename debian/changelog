@@ -1,3 +1,25 @@
+libfont-ttf-perl (0.48-1) unstable; urgency=low
+
+  * New upstream release (closes: #614924).
+
+  [ gregor herrmann ]
+  * debian/control: Changed: Switched Vcs-Browser field to ViewSVN
+    (source stanza).
+  * debian/control: Added: ${misc:Depends} to Depends: field.
+  * Switch to source format 3.0 (quilt); remove quilt framework.
+  * Set Standards-Version to 3.9.1; remove version from perl build dependency.
+  * Switch to debhelper 7.
+  * Update/add patches to fix POD and spelling problems.
+  * debian/copyright: update formatting and copyright/license info.
+
+  [ Nathan Handler ]
+  * debian/watch: Update to ignore development releases.
+
+  [ Russ Allbery ]
+  * Remove myself from Uploaders.
+
+ -- gregor herrmann <gregoa@debian.org>  Fri, 25 Feb 2011 23:29:24 +0100
+
 libfont-ttf-perl (0.45-1) unstable; urgency=low
 
   * New upstream release.

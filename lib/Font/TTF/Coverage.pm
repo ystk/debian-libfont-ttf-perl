@@ -43,6 +43,8 @@ If no $isCover, then vals is a hash of glyphs against class values.
 
 =cut
 
+our $dontsort;
+
 sub new
 {
     my ($class) = shift;
@@ -58,7 +60,10 @@ sub new
         { $self->{'val'}{$v} = $self->{'count'}++; }
     }
     else
-    { $self->{'val'} = {@_}; }
+    {
+        $self->{'val'} = {@_};
+        foreach (values %{$self->{'val'}}) {$self->{'max'} = $_ if $_ > $self->{'max'}}
+    }
     bless $self, $class;
 }
 
@@ -128,6 +133,9 @@ sub out
     my ($g, $eff, $grp, $out);
     my ($shipout) = ($state ? sub {$out .= $_[0];} : sub {$fh->print($_[0]);});
     my (@gids) = sort {$a <=> $b} keys %{$self->{'val'}};
+
+    if ($self->{'cover'} and !$self->{'dontsort'} and !$dontsort)
+    { $self->sort(); }
 
     $fmt = 1; $grp = 1; $eff = 0;
     for ($i = 1; $i <= $#gids; $i++)
@@ -232,7 +240,7 @@ sub add
 }
 
 
-=head2 $c->signtaure
+=head2 $c->signature
 
 Returns a vector of all the glyph ids covered by this coverage table or class
 

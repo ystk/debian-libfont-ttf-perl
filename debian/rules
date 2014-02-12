@@ -1,66 +1,13 @@
 #!/usr/bin/make -f
-# This debian/rules file is provided as a template for normal perl
-# packages. It was created by Marc Brockschmidt <marc@dch-faq.de> for
-# the Debian Perl Group (http://pkg-perl.alioth.debian.org/) but may
-# be used freely wherever it is useful.
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
-# If set to a true value then MakeMaker's prompt function will
-# always return the default without waiting for user input.
-export PERL_MM_USE_DEFAULT=1
-
-include /usr/share/quilt/quilt.make
-
-PERL   ?= /usr/bin/perl
 PACKAGE = $(shell dh_listpackages)
 TMP     = $(CURDIR)/debian/$(PACKAGE)
 
-build: build-stamp
-build-stamp: $(QUILT_STAMPFN)
-	dh_testdir
-	$(PERL) Makefile.PL INSTALLDIRS=vendor
-	$(MAKE)
-	$(MAKE) test
-	touch $@
+%:
+	dh $@
 
-clean: unpatch
-	dh_testdir
-	dh_testroot
-	dh_clean build-stamp install-stamp
-	[ ! -f Makefile ] || $(MAKE) realclean
-
-install: install-stamp
-install-stamp: build-stamp
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	$(MAKE) install DESTDIR=$(TMP) PREFIX=/usr
+override_dh_auto_install:
+	dh_auto_install
 	$(RM) $(TMP)/usr/share/perl5/Font/TTF/Changes
 	$(RM) $(TMP)/usr/share/perl5/ttfmod.pl
-	chmod 644 $(TMP)/usr/share/perl5/Font/TTF/Manual.pod
-	[ ! -d $(TMP)/usr/lib/perl5 ] || \
-		rmdir --ignore-fail-on-non-empty --parents --verbose \
-		$(TMP)/usr/lib/perl5
-	touch $@
-
-binary-arch:
-# We have nothing to do here for an architecture-independent package
-
-binary-indep: build install
-	dh_testdir
-	dh_testroot
-	dh_installexamples lib/ttfmod.pl
-	dh_installdocs README.TXT
-	dh_installchangelogs Changes
-	dh_perl
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
+	

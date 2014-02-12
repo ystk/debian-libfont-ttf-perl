@@ -341,7 +341,7 @@ tag and if the particular language of a string is found to match, then
 that string is changed, otherwise no change occurs.
 
 If supplied, @cover should be a list of references to two-element arrays 
-containing pid,eid pairs that should added to the name table if not already present.
+containing pid,eid pairs that should be added to the name table if not already present.
 
 This function does not add any names to the table unless @cover is supplied. 
 
@@ -355,17 +355,30 @@ sub set_name
     foreach $pid (0 .. $#{$self->{'strings'}[$nid]})
     {
         my $strNL = $str;
-        $strNL =~ s/\n/\r\n/og  if $pid == 3;
-        $strNL =~ s/\n/\r/og    if $pid == 1;
+        $strNL =~ s/(?:\r?)\n/\r\n/og  if $pid == 3;
+        $strNL =~ s/(?:\r?)\n/\r/og    if $pid == 1;
         foreach $eid (0 .. $#{$self->{'strings'}[$nid][$pid]})
         {
+            if (defined $self->{'strings'}[$nid][$pid][$eid])
+            {
+                my ($isincover) = 0;
+                foreach $c (@cover)
+                {
+                    if ($c->[0] == $pid && $c->[1] == $eid)
+                    {
+                        $isincover = 1;
+                        last;
+                    }
+                }
+                push(@cover, [$pid, $eid]) if (!$isincover);
+            }
             foreach $lid (keys %{$self->{'strings'}[$nid][$pid][$eid]})
             {
                 next unless (!defined $lang || $self->match_lang($pid, $lid, $lang));
                 $self->{'strings'}[$nid][$pid][$eid]{$lid} = $strNL;
-                foreach $c (0 .. scalar @cover)
+                foreach $c (0 .. $#cover)
                 {
-                    next unless ($cover[$c][0] == $pid && $cover[$c][1] == $eid);
+                    next unless (defined $cover[$c] && $cover[$c][0] == $pid && $cover[$c][1] == $eid);
                     delete $cover[$c];
                     last;
                 }
@@ -374,6 +387,7 @@ sub set_name
     }
     foreach $c (@cover)
     {
+        next unless (defined $c && scalar @$c);
         my ($pid, $eid) = @{$c};
         my ($lid) = $self->find_lang($pid, $lang);
         my $strNL = $str;
@@ -399,8 +413,9 @@ sub match_lang
     my ($self, $pid, $lid, $lang) = @_;
     my ($langid) = $self->get_lang($pid, $lid);
 
+    return 1 if ($pid == 0);        # all languages are equal in unicode since nothing defined
     return ($lid == $lang) if ($lang != 0 || $lang eq '0');
-    return !index(lc($langid), lc($lang));
+    return !index(lc($langid), lc($lang)) || !index(lc($lang), lc($langid));
 }
 
 =head2 Font::TTF::Name->get_lang($pid, $lid)
