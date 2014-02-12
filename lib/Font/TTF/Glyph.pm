@@ -252,7 +252,7 @@ sub read
     my ($fh) = $self->{' INFILE'};
     my ($dat);
 
-    return $self if $self->{' read'};
+    return $self if ($self->{' read'} > 0);
     $self->{' read'} = 1;
     $fh->seek($self->{' LOC'} + $self->{' BASE'}, 0);
     $fh->read($self->{' DAT'}, $self->{' LEN'});
@@ -286,7 +286,9 @@ sub read_dat
         $max = 0;
         foreach (@{$self->{'endPoints'}})
         { $max = $_ if $_ > $max; }
-        $max++;
+#        print STDERR join(",", unpack('C*', $self->{" DAT"}));
+#        printf STDERR ("(%d,%d in %d=%d @ %d)", scalar @{$self->{'endPoints'}}, $max, length($dat), $self->{' LEN'}, $fp);
+        $max++ if (@{$self->{'endPoints'}});
         $self->{'numPoints'} = $max;
         $self->{'instLen'} = unpack("n", substr($dat, $fp));
         $self->{'hints'} = substr($dat, $fp + 2, $self->{'instLen'});
@@ -568,7 +570,7 @@ sub update
                 {
                     if ($comp->{'scale'}[0] == $comp->{'scale'}[3])
                     { $flag |= 8 unless ($comp->{'scale'}[0] == 0
-                                    || abs(abs($comp->{'scale'}[0]) - 1.) < .001); }
+                                    || $comp->{'scale'}[0] == 1); }
                     else
                     { $flag |= 64; }
                 } else
@@ -666,6 +668,8 @@ sub update_bbox
                 $gxx += $comp->{'args'}[0];
                 $gxy += $comp->{'args'}[1];
             }
+            ($gnx, $gxx) = ($gxx, $gnx) if $gnx > $gxx;
+            ($gny, $gxy) = ($gxy, $gny) if $gny > $gxy;
             $maxx = $gxx if $gxx > $maxx;
             $minx = $gnx if $gnx < $minx;
             $maxy = $gxy if $gxy > $maxy;

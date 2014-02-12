@@ -30,7 +30,7 @@ The action contains a string of glyphs to replace the match string by
 
 =item l
 
-The action array contains a list of lookups and offsets to run, in order, on
+The action array contains a list of offsets and lookups to run, in order, on
 the matched string
 
 =item a
@@ -129,6 +129,7 @@ sub read_sub
     $lookup->{'FORMAT'} = $fmt;
     if ($type == 1 && $fmt == 1)
     {
+        $count -= 65536 if ($count > 32767);
         $lookup->{'ADJUST'} = $count;
         $lookup->{'ACTION_TYPE'} = 'o';
     } elsif ($type == 1 && $fmt == 2)
