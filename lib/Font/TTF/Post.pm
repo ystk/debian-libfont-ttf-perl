@@ -32,7 +32,7 @@ variables available to control what post table types can be written.
 =item $Font::TTF::Post::no25
 
 If set tells Font::TTF::Post::out to use table type 2 instead of 2.5 in case apps
-can't handle version 2.5.
+cannot handle version 2.5.
 
 =item VAL
 
@@ -126,11 +126,12 @@ Reads the Postscript table into memory from disk
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($dat, $dat1, $i, $off, $c, $maxoff, $form, $angle, $numGlyphs);
     my ($fh) = $self->{' INFILE'};
 
     $numGlyphs = $self->{' PARENT'}{'maxp'}{'numGlyphs'};
-    $self->SUPER::read or return $self;
     init unless ($fields{'FormatType'});
     $fh->read($dat, 32);
     TTF_Read_Fields($self, $dat, \%fields);
@@ -285,6 +286,18 @@ sub XML_element
     $self;
 }
 
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 32;
+}
+
 1;
 
 =head1 BUGS
@@ -299,8 +312,18 @@ No support for type 4 tables
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

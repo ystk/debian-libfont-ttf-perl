@@ -45,11 +45,12 @@ Reads the table into data structures
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($fh) = $self->{' INFILE'};
     my ($numg, $ppem, $i, $numt, $dat, $len);
 
     $numg = $self->{' PARENT'}{'maxp'}{'numGlyphs'};
-    $self->SUPER::read or return $self;
 
     $fh->read($dat, 8);
     ($self->{'Version'}, $numt, $len) = unpack("nnN", $dat);
@@ -91,6 +92,18 @@ sub out
         $fh->print(pack("C*", $i, $max, @{$self->{$i}}[0..($numg - 1)]) . $pad);
     }
     $self;
+}
+
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 8;
 }
 
 
@@ -142,8 +155,18 @@ None known
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

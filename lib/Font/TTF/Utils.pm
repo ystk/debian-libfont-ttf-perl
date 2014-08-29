@@ -247,7 +247,7 @@ sub TTF_Pack
                 }
                 else
                 { $frac = 0; }
-                $dat .= pack('nn', $res, eval("0x$frac"));
+                $dat .= pack('nn', $res, hex($frac));
             }
             elsif ($type eq "F")
             {
@@ -564,7 +564,7 @@ sub make_circle
 {
     my ($font, $cmap, $dia, $sb, %opts) = @_;
     my ($upem) = $font->{'head'}{'unitsPerEm'};
-    my ($glyph) = Font::TTF::Glyph->new('PARENT' => $font, 'read' => 2);
+    my ($glyph) = Font::TTF::Glyph->new('PARENT' => $font, 'read' => 2, 'isDirty' => 1);
     my ($PI) = 3.1415926535;
     my ($R, $r, $xorg, $yorg);
     my ($i, $j, $numg, $maxp);
@@ -623,8 +623,18 @@ No known bugs
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

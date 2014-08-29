@@ -1,4 +1,26 @@
+=head1 NAME
+
+Font::TTF::Useall - shortcut to 'use' all the Font::TTF modules
+
+=head1 SYNOPSIS
+
+    use Font::TTF::Useall;
+
+=head1 DESCRIPTION
+
+Useful for debugging, this module simply does a 'use' on all the other
+modules that are part of Font::TTF.
+
+=cut
+
+use Font::TTF::Ttc;
+use Font::TTF::PSNames;
+use Font::TTF::OTTags;
+use Font::TTF::EBDT;
+use Font::TTF::EBLC;
+use Font::TTF::DSIG;
 use Font::TTF::Sill;
+use Font::TTF::Silf;
 use Font::TTF::Cvt_;
 use Font::TTF::Fpgm;
 use Font::TTF::Glyf;
@@ -50,5 +72,31 @@ use Font::TTF::Mort::Ligature;
 use Font::TTF::Mort::Noncontextual;
 use Font::TTF::Mort::Rearrangement;
 use Font::TTF::Mort::Subtable;
+use Font::TTF::Features::Cvar;
+use Font::TTF::Features::Size;
+use Font::TTF::Features::Sset;
+use Font::TTF::Woff;
+use Font::TTF::Woff::MetaData;
+use Font::TTF::Woff::PrivateData;
+use Font::TTF::Glat;
+use Font::TTF::Gloc;
+use Font::TTF::Dumper;
+
 
 1;
+
+=head1 AUTHOR
+
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
+
+=cut

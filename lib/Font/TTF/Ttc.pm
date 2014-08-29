@@ -147,9 +147,11 @@ Closees any opened files by us
 sub DESTROY
 {
     my ($self) = @_;
-    close ($self->{' INFILE'});
+    close ($self->{' INFILE'}) if $self->{' INFILE'};
     undef;
 }
+
+1;
 
 =head1 BUGS
 
@@ -157,8 +159,18 @@ No known bugs, but then not ever executed!
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

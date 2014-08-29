@@ -87,7 +87,7 @@ sub read
 		else #version == 2
 			{($feature, $nSettings, $reserved, $settingTable, $featureFlags, $nameIndex)
 				= TTF_Unpack("LSSLSS", substr($self->{' dat'}, 12 + ($_ - 1) * 16, 16))};
-		my $feature = 
+		$feature = 
 			{
 				'feature'	=> $feature,
 				'name'		=> $nameIndex,
@@ -100,7 +100,7 @@ sub read
 		if ($featureFlags & 0x4000)
 			{$feature->{'default'} = $featureFlags & 0x00FF;}
 		else
-			{$feature->{'default'} = @settings[0];}
+			{$feature->{'default'} = $settings[0];}
 		$feature->{'settings'} = {@settings};
 		
 		push(@$features, $feature);
@@ -128,7 +128,7 @@ sub out
 
 	$features = $self->{'features'};
 	$numFeatures = @$features;
-	$featuresData, $settingsData = ('', '');
+	$featuresData = $settingsData = '';
 
 	foreach (@$features) {
 		$settings = $_->{'settings'};
@@ -175,6 +175,18 @@ sub out
 	$self;
 }
 
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 6;
+}
+
 =head2 $t->print($fh)
 
 Prints a human-readable representation of the table
@@ -195,8 +207,8 @@ sub print
 
 	$features = $self->{'features'};
 	foreach (@$features) {
-		$fh->printf("Feature %d, %s, default: %d name %d # '%s'\n",
-					$_->{'feature'},
+		$fh->printf("Feature %s, %s, default: %d name %d # '%s'\n",
+					$_->{'feature'} > 0x01000000 ? '"' . $self->num_to_tag($_->{'feature'}) . '"' : $_->{'feature'}, 
 					($_->{'exclusive'} ? "exclusive" : "additive"),
 					$_->{'default'}, 
 					$_->{'name'},
@@ -231,6 +243,55 @@ sub settingName
 	($featureName, $settingName);
 }
 
+=head2 $t->tag_to_num ($feat_str)
+
+Convert an alphanumeric feature id tag (string) to a number (32-bit).
+Tags are normally 4 chars. Graphite ignores space
+padding if it is present, so we do the same here.
+
+=cut
+
+sub tag_to_num
+{
+	my ($self, $feat_tag) = @_;
+	my $new_feat_num;
+	
+	if ($feat_tag > 0)
+		{$new_feat_num = $feat_tag;}	# already a number, so just return it.
+	else
+	{
+		$feat_tag =~ s/[ \000]+$//o;	# strip trailing nulls or space
+		$new_feat_num = unpack('N', pack('a4', $feat_tag)); #adds null padding on right if less than 4 chars
+	}
+	
+	return $new_feat_num;
+}
+
+=head2 $t->num_to_tag ($feat_num)
+
+Convert a feature id number (32-bit) back to a tag (string).
+Trailing space or null padding is removed.
+Feature id numbers that do not represent alphanumeric tags 
+are returned unchanged.
+
+=cut
+
+sub num_to_tag
+{
+	my ($self, $feat_num) = @_;
+	my $new_feat_tag;
+	
+	if ($feat_num > 0x01000000)
+	{
+		$new_feat_tag = unpack('a4', pack('N', $feat_num));
+		$new_feat_tag =~ s/[ \000]+$//o;	# strip trailing nulls or space
+	}
+	else
+		{$new_feat_tag = $feat_num;}
+	
+	return $new_feat_tag;
+}
+
 1;
 
 =head1 BUGS
@@ -243,7 +304,17 @@ feature is changed to have one setting.
 =head1 AUTHOR
 
 Alan Ward (derived from Jonathan Kew's Feat.pm).
-See L<Font::TTF::Font> for copyright and licensing.
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

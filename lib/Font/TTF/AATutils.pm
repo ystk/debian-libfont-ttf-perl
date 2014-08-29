@@ -1,10 +1,17 @@
 package Font::TTF::AATutils;
 
+=head1 NAME
+
+Font::TTF::AATutils - Utility functions for AAT tables
+
+=cut
+
 use strict;
 use vars qw(@ISA @EXPORT);
 require Exporter;
 
 use Font::TTF::Utils;
+use Font::TTF::Segarr;
 use IO::File;
 
 @ISA = qw(Exporter);
@@ -686,4 +693,20 @@ sub AAT_write_lookup
 }
 
 1;
+
+=head1 AUTHOR
+
+Jonathan Kew L<Jonathan_Kew@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
+
+=cut
 

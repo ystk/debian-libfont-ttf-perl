@@ -30,7 +30,7 @@ $t->{'SCRIPTS'}{$tag}) has information below it.
 
 =item OFFSET
 
-This variable is preceeded by a space and gives the offset from the start of the
+This variable is preceded by a space and gives the offset from the start of the
 table (not the table section) to the script table for this script
 
 =item REFTAG
@@ -59,7 +59,7 @@ Each language is a hash containing its information:
 
 =item OFFSET
 
-This variable is preceeded by a a space and gives the offset from the start of
+This variable is preceded by a a space and gives the offset from the start of
 the whole table to the language table for this language
 
 =item REFTAG
@@ -105,12 +105,12 @@ each feature. Each feature has the following structure:
 
 =item OFFSET
 
-This attribute is preceeded by a space and gives the offset relative to the start of the whole
+This attribute is preceded by a space and gives the offset relative to the start of the whole
 table of this particular feature.
 
 =item PARMS
 
-This is an unused offset to the parameters for each feature
+If FeatureParams are defined for this feature, this contains a reference to the corresponding FeatureParams object.  Otherwise set to null.
 
 =item LOOKUPS
 
@@ -132,7 +132,7 @@ script. Each lookup contains subtables and other information:
 
 =item OFFSET
 
-This name is preceeded by a space and contains the offset from the start of the table to this
+This name is preceded by a space and contains the offset from the start of the table to this
 particular lookup
 
 =item TYPE
@@ -144,6 +144,10 @@ within the lookup
 
 Holds the lookup flag bits
 
+=item FILTER
+
+Holds the MarkFilteringSet (that is, the index into GDEF->MARKSETS) for the lookup.
+
 =item SUB
 
 This holds an array of subtables which are subclass specific. Each subtable must have
@@ -154,7 +158,7 @@ GSUB and GPOS tables which are the target subclasses of this class.
 
 =item OFFSET
 
-This is preceeded by a space and gives the offset relative to the start of the table for this
+This is preceded by a space and gives the offset relative to the start of the table for this
 subtable
 
 =item FORMAT
@@ -193,7 +197,7 @@ how the different element types are marked.
 
 =item PRE
 
-This array holds the sequence of elements preceeding the first match element
+This array holds the sequence of elements preceding the first match element
 and has the same form as the MATCH array.
 
 =item POST
@@ -222,10 +226,6 @@ The index to a lookup to be acted upon on the match string.
 
 =back
 
-=back
-
-=back
-
 =item CLASS
 
 For those lookups which use class categories rather than glyph ids for matching
@@ -239,6 +239,8 @@ This is the offset to the class definition for the before match glyphs
 =item POST_CLASS
 
 This is the offset to the class definition for the after match glyphs.
+
+=back
 
 =item ACTION_TYPE
 
@@ -268,6 +270,7 @@ are stored relative to another base within the subtable.
 
 =back
 
+=back
 
 =head1 METHODS
 
@@ -276,10 +279,17 @@ are stored relative to another base within the subtable.
 use Font::TTF::Table;
 use Font::TTF::Utils;
 use Font::TTF::Coverage;
+
 use strict;
-use vars qw(@ISA);
+use vars qw(@ISA %FeatParams);
 
 @ISA = qw(Font::TTF::Table);
+
+%FeatParams = (
+    'ss' => 'Font::TTF::Features::Sset',
+  'cv' => 'Font::TTF::Features::Cvar',
+  'si' => 'Font::TTF::Features::Size',
+  );
 
 =head2 $t->read
 
@@ -290,12 +300,13 @@ Reads the table passing control to the subclass to handle the subtable specifics
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($dat, $i, $l, $oScript, $oFeat, $oLook, $tag, $nScript, $off, $dLang, $nLang, $lTag);
-    my ($nFeat, $nLook, $nSub, $j, $temp);
+    my ($nFeat, $oParms, $FType, $nLook, $nSub, $j, $temp, $t);
     my ($fh) = $self->{' INFILE'};
     my ($moff) = $self->{' OFFSET'};
 
-    $self->SUPER::read or return $self;
     $fh->read($dat, 10);
     ($self->{'Version'}, $oScript, $oFeat, $oLook) = TTF_Unpack("vSSS", $dat);
 
@@ -324,11 +335,30 @@ sub read
 
     foreach $tag (grep {m/^.{4}(?:\s_\d+)?$/o} keys %$l)
     {
-        $fh->seek($moff + $l->{$tag}{' OFFSET'}, 0);
+        $oFeat=$moff + $l->{$tag}{' OFFSET'};
+        $fh->seek($oFeat, 0);
         $fh->read($dat, 4);
-        ($l->{$tag}{'PARMS'}, $nLook) = unpack("n2", $dat);
+        ($oParms, $nLook) = unpack("n2", $dat);
         $fh->read($dat, $nLook * 2);
         $l->{$tag}{'LOOKUPS'} = [unpack("n*", $dat)];
+        $l->{$tag}{'PARMS'}="";
+        if ($oParms > 0)
+        {
+            $FType=$FeatParams{substr($tag,0,2)};
+            if ($FType)
+            {
+                $t=$FType;
+                if ($^O eq "MacOS")
+                    { $t =~ s/^|::/:/oig; }
+                else
+                    { $t =~ s|::|/|oig; }
+                    require "$t.pm";
+                $l->{$tag}{'PARMS'} = $FType->new( INFILE  => $fh,
+                                                                                     OFFSET => $oFeat+$oParms);
+            $l->{$tag}{'PARMS'}->read;
+          }
+        }               
+        
     }
 
 # Now the script/lang hierarchy
@@ -381,6 +411,7 @@ sub read
         }
         foreach $lTag (@{$l->{$tag}{'LANG_TAGS'}}, 'DEFAULT')
         {
+        	# Make copies of referenced languages for each reference. 
             next unless $l->{$tag}{$lTag}{' REFTAG'};
             $temp = $l->{$tag}{$lTag}{' REFTAG'};
             $l->{$tag}{$lTag} = &copy($l->{$tag}{$temp});
@@ -411,8 +442,12 @@ sub read
         $fh->read($dat, 6);
         ($l->{'TYPE'}, $l->{'FLAG'}, $nSub) = unpack("n3", $dat);
         $fh->read($dat, $nSub * 2);
-        $j = 0;
         my @offsets = unpack("n*", $dat);
+        if ($l->{'FLAG'} & 0x0010)
+        {
+            $fh->read($dat, 2);
+            $l->{'FILTER'} = unpack("n", $dat);
+        }
         my $isExtension = ($l->{'TYPE'} == $self->extension());
         for ($j = 0; $j < $nSub; $j++)
         {
@@ -459,7 +494,7 @@ sub extension
 Writes this Opentype table to the output calling $t->out_sub for each sub table
 at the appropriate point in the output. The assumption is that on entry the
 number of scripts, languages, features, lookups, etc. are all resolved and
-the relationships fixed. This includes a script's LANG_TAGS list and that all
+the relationships fixed. This includes a LANG_TAGS list for a script, and that all
 scripts and languages in their respective dictionaries either have a REFTAG or contain
 real data.
 
@@ -469,8 +504,8 @@ sub out
 {
     my ($self, $fh) = @_;
     my ($i, $j, $base, $off, $tag, $t, $l, $lTag, $oScript, @script, @tags);
-    my ($end, $nTags, @offs, $oFeat, $oLook, $nSub, $nSubs, $big, $out);
-
+    my ($end, $nTags, @offs, $oFeat, $oFtable, $oParms, $FType, $oLook, $nSub, $nSubs, $big, $out);
+    
     return $self->SUPER::out($fh) unless $self->{' read'};
 
 # First sort the features
@@ -560,8 +595,18 @@ sub out
     foreach $t (@{$self->{'FEATURES'}{'FEAT_TAGS'}})
     {
         $tag = $self->{'FEATURES'}{$t};
-        $tag->{' OFFSET'} = tell($fh) - $base - $oFeat;
+        $oFtable = tell($fh) - $base - $oFeat;
+        $tag->{' OFFSET'} = $oFtable;
         $fh->print(pack("n*", 0, $#{$tag->{'LOOKUPS'}} + 1, @{$tag->{'LOOKUPS'}}));
+        if ($tag->{'PARMS'})
+        {
+            $end = $fh->tell();
+            $oParms = $end - $oFtable - $base - $oFeat;
+            $fh->seek($oFtable + $base + $oFeat,0);
+            $fh->print(pack("n",$oParms));
+            $fh->seek($end,0);
+            $tag->{'PARMS'}->out($fh);
+        }
     }
     $end = $fh->tell();
     $fh->seek($oFeat + $base + 2, 0);
@@ -572,7 +617,7 @@ sub out
     $fh->seek($end, 0);
     $oLook = $end - $base;
     
-    # Start Lookup List Table
+    # LookupListTable (including room for offsets to LookupTables)
     $nTags = $#{$self->{'LOOKUP'}} + 1;
     $fh->print(pack("n", $nTags));
     $fh->print(pack("n", 0) x $nTags);
@@ -602,10 +647,12 @@ sub out
             {
                 $tag = $self->{'LOOKUP'}[$j];
                 $nSub = $self->num_sub($tag);
+                $tag->{' OFFSET'} = $fh->tell() - $base - $oLook; # offset to this extension lookup
+                # LookupTable (including actual offsets to subtables)
                 $fh->print(pack("nnn", $ext, $tag->{'FLAG'}, $nSub));
-                $fh->print(pack("n*", map {$_ * 8 + 6 + $nSub * 2} (0 .. $nSub-1)));    # BH 2004-03-04
+                $fh->print(pack("n*", map {6 + $nSub * 2 + $_ * 8 + $tag->{'FLAG'} & 0x0010 ? 2 : 0 } (0 .. $nSub-1)));
+                $fh->print(pack("n", $tag->{'FILTER'})) if $tag->{'FLAG'} & 0x0010;
                 $tag->{' EXT_OFFSET'} = $fh->tell();    # = first extension lookup subtable
-                $tag->{' OFFSET'} = $tag->{' EXT_OFFSET'} - $nSub * 2 - 6 - $base - $oLook; # offset to this extension lookup
                 for ($k = 0; $k < $nSub; $k++)
                 { $fh->print(pack('nnN', 1, $tag->{'TYPE'}, 0)); }
             }
@@ -617,11 +664,13 @@ sub out
         $nSub = $self->num_sub($tag);
         if (!defined $big)
         {
+            # LookupTable (including room for subtable offsets)
             $fh->print(pack("nnn", $tag->{'TYPE'}, $tag->{'FLAG'}, $nSub));
             $fh->print(pack("n", 0) x $nSub);
+            $fh->print(pack("n", $tag->{'FILTER'})) if $tag->{'FLAG'} & 0x0010;
         }
         else
-        { $end = $tag->{' EXT_OFFSET'}; }
+        { $end = $tag->{' EXT_OFFSET'}; } # Extension offsets computed relative to start of first Extension subtable -- corrected later
         my (@offs, $out, @refs);
         for ($j = 0; $j < $nSub; $j++)
         {
@@ -721,7 +770,7 @@ sub maxContext
                 {
                     my $lgt;
                     $lgt++ if exists $s->{'COVERAGE'};  # Count 1 for the coverage table if it exists
-                    for (qw(MATCH PRE POST))
+                    for (qw(MATCH POST))                # only Input and Lookahead sequences count (Lookbehind doesn't) -- see OT spec.
                     {
                         $lgt += @{$m->{$_}} if exists $m->{$_};
                     }
@@ -737,6 +786,10 @@ sub maxContext
 
 
 =head2 $t->update
+
+Perform various housekeeping items:
+
+For all lookups, set/clear 0x0010 bit of flag words based on 'FILTER' value.
 
 Sort COVERAGE table and RULES for all lookups.
 
@@ -754,24 +807,54 @@ sub update
     
     return undef unless ($self->SUPER::update);
     
-    if (!$Font::TTF::Coverage::dontsort and defined ($self->{'LOOKUP'}))
+    if (defined ($self->{'LOOKUP'}))
     {
-        # Sort coverage tables and rules of all lookups by glyphID
-        
+            
+        # make flag word agree with mark filter setting:
         for my $l (@{$self->{'LOOKUP'}})
         {
-            next unless defined $l->{'SUB'};
-            for my $sub (@{$l->{'SUB'}})
+            if (defined $l->{'FILTER'})
+            { $l->{'FLAG'} |= 0x0010; }
+            else
+            { $l->{'FLAG'} &= ~0x0010; }
+        }
+        
+        unless ($Font::TTF::Coverage::dontsort)
+        {
+            # Sort coverage tables and rules of all lookups by glyphID
+            # The lookup types that need to be sorted are:
+            #    GSUB: 1.2 2 3 4 5.1 6.1 8    (However GSUB type 8 lookups are not yet supported by Font::TTF)
+            #    GPOS: 1.2 2.1 3 4 5 6 7.1 8.1
+            
+            for my $l (@{$self->{'LOOKUP'}})
             {
-                next unless defined ($sub->{'COVERAGE'} and !$sub->{'COVERAGE'}{'dontsort'} and defined $sub->{'RULES'});
-                
-                # OK! Found a lookup to sort:
-
-                my @map = $sub->{'COVERAGE'}->sort();
-                my $newrules = [];
-                foreach (0 .. $#map)
-                { push @{$newrules}, $sub->{'RULES'}[$map[$_]]; }
-                $sub->{'RULES'} = $newrules;
+                next unless defined $l->{'SUB'};
+                for my $sub (@{$l->{'SUB'}})
+                {
+                    if (defined $sub->{'COVERAGE'} and $sub->{'COVERAGE'}{'cover'} and !$sub->{'COVERAGE'}{'dontsort'})
+                    {
+                        # OK! Found a lookup with coverage table:
+                        my @map = $sub->{'COVERAGE'}->sort();
+                        if (defined $sub->{'RULES'} and ($sub->{'MATCH_TYPE'} =~ /g/ or $sub->{'ACTION_TYPE'} =~ /[gvea]/))
+                        {
+                            # And also a RULES table which now needs to be re-sorted
+                            my $newrules = [];
+                            foreach (0 .. $#map)
+                            { push @{$newrules}, $sub->{'RULES'}[$map[$_]]; }
+                            $sub->{'RULES'} = $newrules;
+                        }
+                    }
+                        
+                    # Special case for Mark positioning -- need to also sort the MarkArray
+                    if (exists($sub->{'MARKS'}) and ref($sub->{'MATCH'}[0]) =~ /Cover/ and $sub->{'MATCH'}[0]{'cover'} and !$sub->{'MATCH'}[0]{'dontsort'})
+                    {
+                        my @map = $sub->{'MATCH'}[0]->sort();
+                        my $newmarks = [];
+                        foreach (0 .. $#map)
+                        { push @{$newmarks}, $sub->{'MARKS'}[$map[$_]]; }
+                        $sub->{'MARKS'} = $newmarks;
+                    }
+                }
             }
         }
     }
@@ -781,9 +864,8 @@ sub update
 
     # Find my sibling (GSUB or GPOS, depending on which I am)
     my $sibling = ref($self) eq 'Font::TTF::GSUB' ? 'GPOS' : ref($self) eq 'Font::TTF::GPOS' ? 'GSUB' : undef;
-    return $self unless $sibling && exists $self->{' PARENT'}{$sibling};
+    return $self unless $sibling && defined $self->{' PARENT'}{$sibling};
     $sibling = $self->{' PARENT'}{$sibling};
-    next unless defined $sibling;
     
     # Look through scripts defined in sibling:
     for my $sTag (grep {length($_) == 4} keys %{$sibling->{'SCRIPTS'}})
@@ -805,10 +887,11 @@ sub update
             push @{$myScript->{'LANG_TAGS'}}, $lTag;
             $myScript->{$lTag} = { 'FEATURES' => [] };
         }
-        unless (defined $myScript->{'DEFAULT'})
+
+        if (defined $sibScript->{'DEFAULT'} && !defined $myScript->{'DEFAULT'})
         {
-            # Create default lang for this script. Link to 'dflt' if it exists
-            $myScript->{'DEFAULT'} = exists $myScript->{'dflt'} ? {' REFTAG' => 'dflt'} : { 'FEATURES' => [] };
+            # Create default lang for this script.
+            $myScript->{'DEFAULT'} = { 'FEATURES' => [] };
         }
     }
     $self;
@@ -840,7 +923,7 @@ sub copy
 =head2 $t->read_cover($cover_offset, $lookup_loc, $lookup, $fh, $is_cover)
 
 Reads a coverage table and stores the results in $lookup->{' CACHE'}, that is, if
-it hasn't been read already.
+it has not been read already.
 
 =cut
 
@@ -861,7 +944,7 @@ sub read_cover
 }
 
 
-=head2 ref_cache($obj, $cache, $offset)
+=head2 ref_cache($obj, $cache, $offset [, $template])
 
 Internal function to keep track of the local positioning of subobjects such as
 coverage and class definition tables, and their offsets.
@@ -877,12 +960,13 @@ Uses tricks for Tie::Refhash
 
 sub ref_cache
 {
-    my ($obj, $cache, $offset) = @_;
+    my ($obj, $cache, $offset, $template) = @_;
 
     return 0 unless defined $obj;
+    $template ||= 'n';
     unless (defined $cache->{"$obj"})
     { push (@{$cache->{''}}, $obj); }
-    push (@{$cache->{"$obj"}}, $offset);
+    push (@{$cache->{"$obj"}}, [$offset, $template]);
     return 0;
 }
 
@@ -932,8 +1016,11 @@ sub out_final
                     { $t->out($fh, 0); }
                 }
             }
-            foreach $s (@{$r->[0]{$str}})
-            { substr($out, $s, 2) = pack('n', $master_cache->{$str} - $offs); }
+            foreach (@{$r->[0]{$str}})
+            {
+                $s = pack($_->[1], $master_cache->{$str} - $offs);
+                substr($out, $_->[0], length($s)) = $s;
+            }
         }
     }
     if ($state)
@@ -1224,6 +1311,9 @@ sub out_context
     $out;
 }
 
+1;
+
+
 =head1 BUGS
 
 =over 4
@@ -1238,10 +1328,17 @@ repeated if necessary. Within lookup sharing is possible.
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
-
-1;
 
