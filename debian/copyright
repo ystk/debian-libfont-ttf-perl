@@ -1,15 +1,15 @@
-Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135
-Maintainer: martin_hosken@sil.org
-Source: http://search.cpan.org/dist/Font-TTF/
-Name: Font-TTF
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Font-TTF
+Source: https://metacpan.org/release/Font-TTF/
+Upstream-Contact: martin_hosken@sil.org
 
 Files: *
-Copyright: 1998-2011 Martin Hosken <Martin_Hosken@sil.org>
+Copyright: 1998-2013, SIL International <http://www.sil.org>
 License: Artistic-2.0
 
-Files: t/testfont.ttf
-Copyright: © 2005-2007 M. Hosken and SIL International,
-           with Reserved Font Name FontUtils Test
+Files: t/testfont.ttf t/testfont.woff
+Copyright: 2005-2013, SIL International <http://www.sil.org>
+           with Reserved Font Name "FontUtils" and "Test"
 License: other 
  This Font Software is licensed under the SIL Open Font License, Version 1.1.
  This license is copied below, and is also available with a FAQ at:
@@ -104,12 +104,14 @@ License: other
 
 Files: debian/*
 Copyright: 2003, 2005, Gunnar Wolf <gwolf@debian.org>
- 2006-2011, gregor herrmann <gregoa@debian.org>
+ 2006-2014, gregor herrmann <gregoa@debian.org>
  2006, Krzysztof Krzyzaniak (eloy) <eloy@debian.org>
  2006, Russ Allbery <rra@debian.org>
  2007, Damyan Ivanov <dmn@debian.org>
  2007, Martín Ferrari <tincho@debian.org>
-License: other
+ 2011, Ansgar Burchardt <ansgar@debian.org>
+ 2012-2013, Xavier Guimard <x.guimard@free.fr>
+License: Artistic-2.0
 Comment: It is assumed all contributors wanted to use a packaging license
  compatible with upstream.
 

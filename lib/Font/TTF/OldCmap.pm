@@ -22,7 +22,7 @@ important (although L<Font::TTF::Segarr> can work quite happily without it).
 
 =head1 INSTANCE VARIABLES
 
-The instance variables listed here are not preceeded by a space due to their
+The instance variables listed here are not preceded by a space due to their
 emulating structural information in the font.
 
 =over 4
@@ -38,7 +38,7 @@ An array of subtables ([0..Num-1])
 =back
 
 Each subtables also has its own instance variables which are, again, not
-preceeded by a space.
+preceded by a space.
 
 =over 4
 
@@ -89,11 +89,12 @@ Format 2 subtables are not read at all.
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($dat, $i, $j, $k, $id, @ids, $s);
     my ($start, $end, $range, $delta, $form, $len, $num, $ver);
     my ($fh) = $self->{' INFILE'};
 
-    $self->SUPER::read or return $self;
     $fh->read($dat, 4);
     $self->{'Num'} = unpack("x2n", $dat);
     $self->{'Tables'} = [];
@@ -193,6 +194,7 @@ Finds the Microsoft Unicode table and sets the C<mstable> instance variable
 to it if found. Returns the table it finds.
 
 =cut
+
 sub find_ms
 {
     my ($self) = @_;
@@ -267,7 +269,7 @@ sub out
             for ($j = 0; $j < $num; $j++)
             {
                 $delta = $segs->[$j]{'VAL'}[0]; $flat = 1;
-                for ($k = 1; $k < $segs->[$j]{'LEN'}; $k++)
+                for ($k = $k < $segs->[$j]{'LEN'}; $k++)
                 {
                     if ($segs->[$j]{'VAL'}[$k] == 0)
                     { $flat = 0; }
@@ -351,8 +353,18 @@ No support for format 2 tables (MBCS)
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

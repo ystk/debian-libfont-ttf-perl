@@ -7,7 +7,7 @@ Font::TTF::Glyf - The Glyf data table
 =head1 DESCRIPTION
 
 This is a stub table. The real data is held in the loca table. If you want to get a glyf
-look it up in the loca table as C<$f->{'loca'}{'glyphs'}[$num]>. It won't be here!
+look it up in the loca table as C<$f->{'loca'}{'glyphs'}[$num]>. It will not be here!
 
 The difference between reading this table as opposed to the loca table is that
 reading this table will cause updated glyphs to be written out rather than just
@@ -41,6 +41,16 @@ sub read
     $self;
 }
 
+# Internal function called by loca -- decompresses WOFF data if needed.
+
+sub _read
+{
+	my ($self) = @_;
+    $self->SUPER::read or return $self;
+	
+	# Nothing else to do
+	$self;
+}
 
 =head2 $t->out($fh)
 
@@ -48,6 +58,8 @@ Writes out all the glyphs in the parent's location table, calculating a new
 output location for each one.
 
 =cut
+
+# ' match for syntax coloring
 
 sub out
 {
@@ -151,8 +163,18 @@ None known
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

@@ -1,3 +1,50 @@
+libfont-ttf-perl (1.04-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update years of packaging copyright.
+  * Drop patches, all merged/fixed upstream.
+  * debian/rules: update list of removed files.
+  * Add new patch to fix another POD issue.
+
+ -- gregor herrmann <gregoa@debian.org>  Tue, 14 Jan 2014 20:10:19 +0100
+
+libfont-ttf-perl (1.03-1) unstable; urgency=low
+
+  [ Salvatore Bonaccorso ]
+  * Change Vcs-Git to canonical URI (git://anonscm.debian.org)
+  * Change search.cpan.org based URIs to metacpan.org based URIs
+
+  [ Xavier Guimard ]
+  * Imported Upstream version 1.03
+  * Bump Standards-Version to 3.9.5
+  * Update debian/copyright (copyright and years)
+  * Add another hook to fix-manpage-entry.patch
+  * Update fix-pod.patch:
+    - update offsets
+    - remove some entries that have been patched upstream
+  * Remove empty manual pages from build
+
+ -- Xavier Guimard <x.guimard@free.fr>  Tue, 03 Dec 2013 21:13:52 +0100
+
+libfont-ttf-perl (1.02-1) unstable; urgency=low
+
+  [ Ansgar Burchardt ]
+  * debian/control: Convert Vcs-* fields to Git.
+
+  [ gregor herrmann ]
+  * Add patch to avoid warnings about uninitialized values
+    Thanks to Jeffrey Ratcliffe for the bug report and the patch.
+    (Closes: #658653)
+
+  [ Xavier Guimard ]
+  * New upstream release. (Closes: #679637)
+  * Update copyright to format 1.0
+  * Bump Standards-Version to 3.9.4
+  * Forward patches to RT
+  * Add libio-string-perl dependency
+
+ -- Xavier Guimard <x.guimard@free.fr>  Tue, 06 Nov 2012 21:31:29 +0100
+
 libfont-ttf-perl (0.48-1) unstable; urgency=low
 
   * New upstream release (closes: #614924).

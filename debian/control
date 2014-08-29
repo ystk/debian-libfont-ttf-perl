@@ -2,20 +2,21 @@ Source: libfont-ttf-perl
 Section: perl
 Priority: optional
 Maintainer: Debian Perl Group <pkg-perl-maintainers@lists.alioth.debian.org>
-Uploaders: Gunnar Wolf <gwolf@debian.org>,
- Krzysztof Krzyzaniak (eloy) <eloy@debian.org>,
+Uploaders: Krzysztof Krzyzaniak (eloy) <eloy@debian.org>,
  Damyan Ivanov <dmn@debian.org>,
- gregor herrmann <gregoa@debian.org>
-Build-Depends: debhelper (>= 7.0.50~)
-Build-Depends-Indep: perl
-Standards-Version: 3.9.1
-Homepage: http://search.cpan.org/dist/Font-TTF/
-Vcs-Svn: svn://svn.debian.org/pkg-perl/trunk/libfont-ttf-perl/
-Vcs-Browser: http://svn.debian.org/viewsvn/pkg-perl/trunk/libfont-ttf-perl/
+ gregor herrmann <gregoa@debian.org>,
+ Xavier Guimard <x.guimard@free.fr>
+Build-Depends: debhelper (>= 8)
+Build-Depends-Indep: libio-string-perl
+Standards-Version: 3.9.5
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-perl/packages/libfont-ttf-perl.git
+Vcs-Git: git://anonscm.debian.org/pkg-perl/packages/libfont-ttf-perl.git
+Homepage: https://metacpan.org/release/Font-TTF/
 
 Package: libfont-ttf-perl
 Architecture: all
-Depends: ${misc:Depends}, ${perl:Depends}
+Depends: ${misc:Depends}, ${perl:Depends},
+ libio-string-perl
 Suggests: libxml-parser-perl
 Description: Perl module for TrueType font hacking
  Font::TTF module supports reading, processing and writing many different

@@ -58,10 +58,10 @@ sub read
 sub _read
 {
     my ($self, $numg, $numh, $tAdv, $tLsb) = @_;
+    $self->SUPER::read or return $self;
+
     my ($fh) = $self->{' INFILE'};
     my ($i, $dat);
-    
-    $self->SUPER::read or return $self;
 
     for ($i = 0; $i < $numh; $i++)
     {
@@ -193,7 +193,7 @@ sub out_xml
     $self->read;
 
     for ($i = 0; $i < $numg; $i++)
-    { $fh->print("$depth$context->{'indent'}<width adv='$self->{'advance'}[$i]' lsb='$self->{'lsb'}[$i]'/>\n"); }
+    { $fh->print("$depth$context->{'indent'}<width gid='$i' adv='$self->{'advance'}[$i]' lsb='$self->{'lsb'}[$i]'/>\n"); }
 
     $fh->print("$depth</$context->{'name'}>\n");
     $self;
@@ -207,8 +207,18 @@ None known
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
+
 

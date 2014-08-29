@@ -69,7 +69,7 @@ sub out
 
     return $self->SUPER::out($fh) unless ($self->{' read'});
     $fh->print(TTF_Pack("vSSSS", $self->{'version'}, $num, $range, $select, $shift));
-    foreach $k (sort (keys %{$self->{'langs'}}), '+1')
+    foreach $k ((sort keys %{$self->{'langs'}}), '+1')
     {
         my ($numf) = scalar @{$self->{'langs'}{$k}} unless ($k eq '+1');
         $fh->print(pack("a4nn", $k, $numf, $offset));
@@ -109,6 +109,35 @@ sub XML_element
     }
     $self;
 }
+
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 6;
+}
+
 1;
-        
-        
+
+=head1 AUTHOR
+
+Martin Hosken L<Martin_Hosken@sil.org>
+
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
+
+=cut
+

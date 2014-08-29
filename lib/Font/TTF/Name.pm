@@ -124,10 +124,11 @@ Reads all the names into memory
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($fh) = $self->{' INFILE'};
     my ($dat, $num, $stroff, $i, $pid, $eid, $lid, $nid, $len, $off, $here);
 
-    $self->SUPER::read or return $self;
     $fh->read($dat, 6);
     ($num, $stroff) = unpack("x2nn", $dat);
     for ($i = 0; $i < $num; $i++)
@@ -142,7 +143,7 @@ sub read
         {
             if ($pid == 1 && defined $apple_encodings[0][$eid])
             { $dat = TTF_word_utf8(pack("n*", map({$apple_encodings[0][$eid][$_]} unpack("C*", $dat)))); }
-            elsif ($pid == 2 && $eid == 2 && defined @cp_1252)
+            elsif ($pid == 2 && $eid == 2 && @cp_1252)
             { $dat = TTF_word_utf8(pack("n*", map({$cp_1252[0][$_]} unpack("C*", $dat)))); }
             elsif ($pid == 0 || $pid == 3 || ($pid == 2 && $eid == 1))
             { $dat = TTF_word_utf8($dat); }
@@ -164,10 +165,13 @@ sub out
 {
     my ($self, $fh) = @_;
     my ($pid, $eid, $lid, $nid, $todo, @todo);
-    my ($len, $offset, $loc, $stroff, $endloc, $str_trans);
+    my ($len, $loc, $stroff, $endloc, $str_trans);
+    my (%dedup, @strings, @offsets, $strcount);
 
     return $self->SUPER::out($fh) unless $self->{' read'};
 
+    $strcount = 0;
+    $offsets[0] = 0;
     $loc = $fh->tell();
     $fh->print(pack("n3", 0, 0, 0));
     foreach $nid (0 .. $#{$self->{'strings'}})
@@ -185,7 +189,7 @@ sub out
                         { $str_trans = pack("C*",
                                 map({$apple_encodings[1][$eid]{$_} || 0x3F} unpack("n*",
                                 TTF_utf8_word($str_trans)))); }
-                        elsif ($pid == 2 && $eid == 2 && defined @cp_1252)
+                        elsif ($pid == 2 && $eid == 2 && @cp_1252)
                         { $str_trans = pack("C*",
                                 map({$cp_1252[1][$eid]{$_} || 0x3F} unpack("n*",
                                 TTF_utf8_word($str_trans)))); }
@@ -194,25 +198,30 @@ sub out
                         elsif ($pid == 0 || $pid == 3 || ($pid == 2 && $eid == 1))
                         { $str_trans = TTF_utf8_word($str_trans); }
                     }
-                    push (@todo, [$pid, $eid, $lid, $nid, $str_trans]);
+                    my ($str_ind);
+                    unless (defined $dedup{$str_trans})
+                    {
+                        use bytes;
+                        $dedup{$str_trans} = $strcount;
+                        $strings[$strcount] = $str_trans;
+                        $strcount++;
+                        $offsets[$strcount] = $offsets[$strcount-1] + bytes::length($str_trans);
+                    }
+                    $str_ind = $dedup{$str_trans};
+                    push (@todo, [$pid, $eid, $lid, $nid, $str_ind]);
                 }
             }
         }
     }
 
-    $offset = 0;
     @todo = (sort {$a->[0] <=> $b->[0] || $a->[1] <=> $b->[1] || $a->[2] <=> $b->[2]
             || $a->[3] <=> $b->[3]} @todo);
     foreach $todo (@todo)
-    {
-        $len = length($todo->[4]);
-        $fh->print(pack("n6", @{$todo}[0..3], $len, $offset));
-        $offset += $len;
-    }
+    { $fh->print(pack("n6", @{$todo}[0..3], $offsets[$todo->[4]+1] - $offsets[$todo->[4]], $offsets[$todo->[4]])); }
     
     $stroff = $fh->tell() - $loc;
-    foreach $todo (@todo)
-    { $fh->print($todo->[4]); }
+    foreach my $str (@strings)
+    { $fh->print($str); }
 
     $endloc = $fh->tell();
     $fh->seek($loc, 0);
@@ -282,6 +291,18 @@ sub XML_end
     { return $self->SUPER::XML_end(@_); }
 }
 
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 6;
+}
+
 =head2 is_utf8($pid, $eid)
 
 Returns whether a string of a given platform and encoding is going to be in UTF8
@@ -292,7 +313,7 @@ sub is_utf8
 {
     my ($self, $pid, $eid) = @_;
 
-    return ($utf8 && ($pid == 0 || $pid == 3 || ($pid == 2 && ($eid != 2 || defined @cp_1252))
+    return ($utf8 && ($pid == 0 || $pid == 3 || ($pid == 2 && ($eid != 2 || @cp_1252))
             || ($pid == 1 && defined $apple_encodings[$eid])));
 }
 
@@ -332,6 +353,19 @@ sub find_name
     return '';
 }
 
+
+=head2 remove_name($nid)
+
+Removes all strings with the given name id from the table.
+
+=cut
+
+sub remove_name
+{
+    my ($self, $nid) = @_;
+
+    delete $self->{'strings'}[$nid];
+}
 
 =head2 set_name($nid, $str[, $lang[, @cover]])
 
@@ -451,6 +485,42 @@ sub find_lang
     elsif ($pid == 1)
     { return $langs_mac{$lang}; }
     return undef;
+}
+
+=head2 Font::TTF::Name->pe_list()
+
+Returns an array of references to two-element arrays 
+containing pid,eid pairs that already exist in this name table.
+Useful for creating @cover parameter to set_name().
+
+=cut
+
+sub pe_list
+{
+	my ($self) = @_;
+	my (@cover, %ids);
+
+	foreach my $nid (0 .. $#{$self->{'strings'}})
+	{
+		if (defined $self->{'strings'}[$nid])
+		{
+    		foreach my $pid (0 .. $#{$self->{'strings'}[$nid]})
+    		{
+    			if (defined $self->{'strings'}[$nid][$pid])
+    			{
+    				foreach my $eid (0 .. $#{$self->{'strings'}[$nid][$pid]})
+	    			{
+	    				if (defined $self->{'strings'}[$nid][$pid][$eid] && !$ids{$pid}{$eid})
+	    				{
+	    					$ids{$pid}{$eid} = 1;
+	    					push @cover, [$pid, $eid];
+	    				}
+	    			}
+	    		}
+    		}
+    	}
+    }
+	return @cover;
 }
 
 
@@ -592,22 +662,25 @@ M7'3)95=<=<UU-]QTRVUWW'7/?0\\],AC3SSUS',OO/3*:V^\]<Y['WSTR6=?
 1?/7-=S_\],MO?_S]!Y==>0@`
 EOT
 );
-#'
+
 
 @ms_langids = ( [""],
     ['ar', ["-SA", "-IQ", "-EG", "-LY", "-DZ", "-MA", "-TN", 
             "-OM", "-YE", "-SY", "-JO", "-LB", "-KW", "-AE",
-            "-BH", "-QA"]],
+            "-BH", "-QA", "-Ploc-SA", "-145"]],
     ['bg-BG'],
     ['ca-ES'],
-    ['zh', ['-TW', 'CN', '-HK', '-SG', '-MO']],
+    ['zh', ['-TW', '-CN', '-HK', '-SG', '-MO', "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "zh", "-Hant"]],
     ["cs-CZ"],
     ["da-DK"],
     ["de", ["-DE", "-CH", "-AT", "-LU", "-LI"]],
     ["el-GR"],
     ["en", ["-US", "-UK", "-AU", "-CA", "-NZ", "-IE", "-ZA",
             "-JM", "029", "-BZ", "-TT", "-ZW", "-PH", "-ID",
-            "-HK", "-IN", "-MY", "-SG"]],
+            "-HK", "-IN", "-MY", "-SG", "-AE", "-BH", "-EG",
+            "-JO", "-KW", "-TR", "-YE"]],
     ["es", ["-ES", "-MX", "-ES", "-GT", "-CR", "-PA", "-DO",
             "-VE", "-CO", "-PE", "-AR", "-EC", "-CL", "-UY",
             "-PY", "-BO", "-SV", "-HN", "-NI", "-PR", "-US"]],
@@ -623,13 +696,17 @@ EOT
     ["ja-JP"],
     ["ko-KR"],
     ["nl", ["-NL", "-BE"]],
-    ["no", ["-bok-NO", "-nyn-NO"]],
+    ["no", ["-bok-NO", "-nyn-NO", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "nn", "nb"]],
     ["pl-PL"],
     ["pt", ["-BR", "-PT"]],
     ["rm-CH"],
     ["ro", ["-RO", "_MD"]],
     ["ru-RU"],
-    ["hr", ["-HR", "-Latn-CS", "Cyrl-CS", "-BA", "", "-Latn-BA", "-Cyrl-BA"]],
+    ["hr", ["-HR", "-Latn-CS", "Cyrl-CS", "-BA", "", "-Latn-BA", "-Cyrl-BA", 
+            "", "". "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "bs-Cyrl", "bs-Latn", "sr-Cyrl", "sr-Latn", "", "bs", "sr"]],
     ["sk-SK"],
     ["sq-AL"],
     ["sv", ["-SE", "-FI"]],
@@ -644,13 +721,19 @@ EOT
     ["et-EE"],
     ["lv-LV"],
     ["lt-LT"],
-    ["tg-Cyrl-TJ"],
+    ["tg", ["-Cyrl-TJ", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "-Cyrl"]],
     ["fa-IR"],
     ["vi-VN"],
     ["hy-AM"],
-    ["az", ["-Latn-AZ", "-Cyrl-AZ"]],
+    ["az", ["-Latn-AZ", "-Cyrl-AZ", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "-Cyrl", "-Latn"]],
     ["eu-ES"],
-    ["wen". ["wen-DE", "dsb-DE"]],
+    ["wen". ["wen-DE", "dsb-DE", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "dsb"]],
     ["mk-MK"],
 # 0030
     ["st"],
@@ -665,7 +748,8 @@ EOT
     ["hi-IN"],
     ["mt"],
     ["se", ["-NO", "-SE", "-FI", "smj-NO", "smj-SE", "sma-NO", "sma-SE",
-            "", "smn-FI"]],
+            "", "smn-FI", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "smn", "sms", "smj"]],
     ["ga-IE"],
     ["yi"],
     ["ms", ["-MY", "-BN"]],
@@ -674,10 +758,14 @@ EOT
     ["ky-KG"],
     ["sw-KE"],
     ["tk-TM"],
-    ["uz", ["-Latn-UZ", "-Cyrl-UZ"]],
+    ["uz", ["-Latn-UZ", "-Cyrl-UZ", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "-Cyrl", "-Latn"]],
     ["tt-RU"],
     ["bn", ["-IN", "-BD"]],
-    ["pa", ["-IN", "-Arab-PK"]],
+    ["pa", ["-IN", "-Arab-PK", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "-Arab"]],
     ["gu-IN"],
     ["or-IN"],
     ["ta-IN"],
@@ -688,7 +776,9 @@ EOT
     ["mr-IN"],
     ["sa-IN"],
 # 0050
-    ["mn", ["-Cyrl-MN", "-Mong-CN"]],
+    ["mn", ["-Cyrl-MN", "-Mong-CN", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "-Cyrl", "-Mong"]],
     ["bo", ["-CN", "-BT"]],
     ["cy-GB"],
     ["km-KH"],
@@ -697,13 +787,19 @@ EOT
     ["gl-ES"],
     ["kok-IN"],
     ["mni"],
-    ["sd", ["-IN", "-PK"]],
+    ["sd", ["-IN", "-PK", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "-Arab"]],
     ["syr-SY"],
     ["si-LK"],
-    ["chr"],
-    ["iu", ["-Cans-CA", "-Latn-CA"]],
+    ["chr", ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "-Cher"]],
+    ["iu", ["-Cans-CA", "-Latn-CA", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "-Cans", "-Latn"]],
     ["am-ET"],
-    ["tmz", ["-Arab", "tmz-Latn-DZ"]],
+    ["tmz", ["-Arab", "-Latn-DZ", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "-Latn"]],
 # 0060
     ["ks"],
     ["ne", ["-NP", "-IN"]],
@@ -712,8 +808,10 @@ EOT
     ["fil-PH"],
     ["dv-MV"],
     ["bin-NG"],
-    ["fuv-NG"], 
-    ["ha-Latn-NG"],
+    ["fuv", ["-NG", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "ff-Latn"]], 
+    ["ha", ["-Latn-NG", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "-Latn"]],
     ["ibb-NG"],
     ["yo-NG"],
     ["quz", ["-BO", "-EC", "-PE"]],
@@ -740,10 +838,10 @@ EOT
     [""],           # (unassigned)
 # 0080
     ["ug-CN"],
-    [""],           # (unassigned)
+    ["mi-NZ"],
     ["oc-FR"],
+    ["co-FR"],
     ["gsw-FR"],
-    [""],           # (unassigned)
     ["sah-RU"],
     ["qut-GT"],
     ["rw-RW"],
@@ -752,7 +850,19 @@ EOT
     [""],           # (unassigned)
     [""],           # (unassigned)
     ["gbz-AF"],
+    [""],           # (unassigned)
+    [""],           # (unassigned)
+    [""],           # (unassigned)
+# 0090
+    [""],           # (unassigned)
+    ["gd-GB"],
+    ["ku", ["-Arab-IQ", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+            "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "-Arab"]],
+    ["quc-CO"],
 );
+# 0501 = qps-ploc
+# 05fe = qps-ploca
+# 09ff = qps-plocm
 
 @mac_langs = (
     'en', 'fr', 'de', 'it', 'nl', 'sv', 'es', 'da', 'pt', 'no',
@@ -790,8 +900,17 @@ once Perl 5.6 has been released and I can find all the mapping tables, etc.
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
 

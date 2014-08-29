@@ -33,16 +33,15 @@ Number of subtables in the kerning table
 
 =item tables
 
-Array of subtables in the kerning table
-
-=over 4
+Array of subtables in the kerning table 
 
 Each subtable has a number of instance variables.
+
+=over 4
 
 =item kern
 
 A two level hash array containing kerning values. The indexing is left
-value and then right value. In the case of type 2 tables, the indexing
 is via left class and right class. It may seem using hashes is strange,
 but most tables are not type 2 and this method saves empty array values.
 
@@ -102,6 +101,7 @@ use strict;
 use vars qw(@ISA);
 use Font::TTF::Utils;
 use Font::TTF::Table;
+use Font::TTF::Kern::Subtable;
 
 @ISA = qw(Font::TTF::Table);
 my @subtables = qw(OrderedList StateTable ClassArray CompactClassArray);
@@ -115,10 +115,10 @@ Reads the whole kerning table into structures
 sub read
 {
     my ($self) = @_;
+    $self->SUPER::read or return $self;
+
     my ($fh) = $self->{' INFILE'};
     my ($dat, $i, $numt, $len, $cov, $t);
-
-    $self->SUPER::read or return $self;
 
     $fh->read($dat, 4);
     ($self->{'Version'}, $numt) = unpack("n2", $dat);
@@ -136,7 +136,7 @@ sub read
             $fh->read($dat, 8);
             my ($length, $coverage, $index) = unpack("Nnn", $dat);
             my ($type) = $coverage & 0xFF;
-            $t = Font::TTF::Kern::SubTable->create($type, $coverage, $length);
+            $t = Font::TTF::Kern::Subtable->create($type, $coverage, $length);
             $t->read($fh);
         }
         else
@@ -158,11 +158,15 @@ sub read_subtable
     ($t->{'Version'}, $len, $cov) = unpack("n3", $dat);
     $t->{'coverage'} = $cov & 255;
     $t->{'type'} = $cov >> 8;
-    $fh->read($dat, $len - 6);
     if ($t->{'Version'} == 0)
     {
+    	# NB: Cambria is an example of a font that plays an unsual trick: The
+    	# kern table is much larger than can be represented by the header $len
+    	# would allow. So we use the number of pairs to figure out how much to read. 
+        $fh->read($dat, 8);
         $t->{'Num'} = unpack("n", $dat);
-        my (@vals) = unpack("n*", substr($dat, 8, $t->{'Num'} * 6));
+        $fh->read($dat, $t->{'Num'} * 6);
+        my (@vals) = unpack("n*", $dat);
         for (0 .. ($t->{'Num'} - 1))
         {
             my ($f, $l, $v);
@@ -176,10 +180,11 @@ sub read_subtable
     {
         my ($wid, $off, $numg, $maxl, $maxr, $j);
         
+        $fh->read($dat, $len - 6);
         $wid = unpack("n", $dat);
         $off = unpack("n", substr($dat, 2));
         ($t->{'left_first'}, $numg) = unpack("n2", substr($dat, $off));
-        $t->{'left'} = [unpack("C$numg", substr($dat, $off + 4))];
+        $t->{'left'} = [unpack("n$numg", substr($dat, $off + 4))];
         foreach (@{$t->{'left'}})
         {
             $_ /= $wid;
@@ -189,7 +194,7 @@ sub read_subtable
 
         $off = unpack("n", substr($dat, 4));
         ($t->{'right_first'}, $numg) = unpack("n2", substr($dat, $off));
-        $t->{'right'} = [unpack("C$numg", substr($dat, $off + 4))];
+        $t->{'right'} = [unpack("n$numg", substr($dat, $off + 4))];
         foreach (@{$t->{'right'}})
         {
             $_ >>= 1;
@@ -224,7 +229,7 @@ sub out
     return $self->SUPER::out($fh) unless ($self->{' read'});
 
     if ($self->{'Version'} > 0)
-    { $fh->print(TTF_pack("vL", $self->{'Version'}, $self->{'Num'})); }
+    { $fh->print(TTF_Pack("vL", $self->{'Version'}, $self->{'Num'})); }
     else
     { $fh->print(pack("n2", $self->{'Version'}, $self->{'Num'})); }
 
@@ -313,6 +318,18 @@ sub XML_element
     $self;
 }
 
+=head2 $t->minsize()
+
+Returns the minimum size this table can be. If it is smaller than this, then the table
+must be bad and should be deleted or whatever.
+
+=cut
+
+sub minsize
+{
+    return 4;
+}
+
 1;
 
 =head1 BUGS
@@ -331,8 +348,17 @@ No real support functions to I<do> anything with the kerning tables yet.
 
 =head1 AUTHOR
 
-Martin Hosken Martin_Hosken@sil.org. See L<Font::TTF::Font> for copyright and
-licensing.
+Martin Hosken L<Martin_Hosken@sil.org>. 
+
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+
 
 =cut
 

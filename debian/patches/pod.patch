@@ -1,0 +1,17 @@
+Description: fix POD
+Origin: vendor
+Bug: https://rt.cpan.org/Ticket/Display.html?id=92150
+Forwarded: https://rt.cpan.org/Ticket/Display.html?id=92150
+Author: gregor herrmann <gregoa@debian.org>
+Last-Update: 2014-01-14
+
+--- a/lib/Font/TTF/Glat.pm
++++ b/lib/Font/TTF/Glat.pm
+@@ -1,6 +1,6 @@
+ package Font::TTF::Glat;
+ 
+-=head1 TITLE
++=head1 NAME
+ 
+ Font::TTF::Glat - Hold glyph attributes
+ 

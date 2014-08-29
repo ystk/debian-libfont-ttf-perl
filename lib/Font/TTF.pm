@@ -1,6 +1,11 @@
 package Font::TTF;
 
-$VERSION = '0.48';    # MJPH    15-DEC-2010      Bug fixes
+$VERSION = '1.04';    # MJPH     8-Jan-2014      License, POD, and perl -w tidying; bug fixes
+# $VERSION = '1.03';    # MJPH     5-Sep-2013      Add $t->minsize()
+# $VERSION = '1.02';    # MJPH    30-Aug-2012      Fix case typo in Useall
+# $VERSION = '1.01';    # MJPH    30-Aug-2012      add IO::String prerequisite
+# $VERSION = '1.00';    # MJPH    21-Aug-2012      OS/2, OT & Graphite improvements; bug fixes
+# $VERSION = '0.48';    # MJPH    15-DEC-2010      Bug fixes
 # $VERSION = '0.47';    # MJPH     7-AUG-2009      Minor bug fix in Name.pm
 # $VERSION = '0.46';    # MJPH    26-JAN-2009      Various bug fixes, add Sill table
 # $VERSION = '0.45';    # MJPH    11-JUN-2008      Packaging tidying
@@ -24,3 +29,18 @@ Font::TTF - Perl module for TrueType Font hacking
 This module allows you to do almost anything to a TrueType/OpenType Font
 including modify and inspect nearly all tables.
 
+=head1 AUTHOR
+
+Martin Hosken L<Martin_Hosken@sil.org>
+(see CONTRIBUTORS for other authors).
+
+=head1 LICENSING
+
+Copyright (c) 1998-2013, SIL International (http://www.sil.org) 
+
+This module is released under the terms of the Artistic License 2.0. 
+For details, see the full text of the license in the file LICENSE.
+
+.
+
+=cut
